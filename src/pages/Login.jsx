@@ -3,6 +3,8 @@ import { adminConfig } from '../config';
 import { auth, firebaseError, githubProvider, GithubAuthProvider, signInWithPopup, signOut } from '../services/firebase';
 
 const messages = {
+  'auth/configuration-not-found': 'Firebase Authentication is not configured for this project. Open Authentication in Firebase Console, get started, and enable GitHub.',
+  'auth/invalid-api-key': 'The Firebase API key is invalid. Check the web app configuration in Firebase Project settings.',
   'auth/popup-blocked': 'Allow popups for this site, then try again.',
   'auth/popup-closed-by-user': 'Sign-in was closed. Try again when ready.',
   'auth/unauthorized-domain': 'Add this website domain to Firebase Authentication → Settings → Authorized domains.',

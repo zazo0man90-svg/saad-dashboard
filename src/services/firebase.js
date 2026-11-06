@@ -17,6 +17,8 @@ if (!firebaseError) {
     auth = initializeAuth(app, { persistence: browserSessionPersistence, popupRedirectResolver: browserPopupRedirectResolver });
     db = getDatabase(app);
   } catch (error) {
+    auth = null;
+    db = null;
     firebaseError = 'Firebase could not start: ' + error.message;
   }
 }

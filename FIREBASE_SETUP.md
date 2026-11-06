@@ -4,7 +4,7 @@ The app uses Firebase Authentication with GitHub and **Realtime Database** (not 
 
 ## 1. Configure the web app
 
-In Firebase Console → Project settings → General, register/select a web app and copy its public `firebaseConfig` values. Copy `.env.example` to `.env.local` and fill in the corresponding `VITE_FIREBASE_*` values. Copy the exact `databaseURL` from Realtime Database; regional URLs differ.
+The public web configuration for `saad-dashboard-446de` is already included. In Firebase Console → Project settings → General, select your web app to confirm these values. Copy `.env.example` to `.env.local` and fill in `VITE_FIREBASE_DATABASE_URL`. The other `VITE_FIREBASE_*` values can override the included web configuration when needed. Copy the exact `databaseURL` from Realtime Database; regional URLs differ.
 
 These values are public browser configuration. Never add a service-account key or GitHub OAuth client secret to this repository or a `VITE_*` variable. Vite embeds environment values during the build, so configure them on your build host too and rebuild after changes.
 
