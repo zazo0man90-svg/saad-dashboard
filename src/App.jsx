@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, NavLink } from 'react-router-dom';
 import { adminConfig } from './config';
+import { auth, onAuthStateChanged, signOut } from './services/firebase';
+import { dbUtils } from './services/database';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Repositories from './pages/Repositories';
@@ -8,95 +10,98 @@ import Settings from './pages/Settings';
 import './styles.css';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
+  const [isLoading, setIsLoading] = useState(Boolean(auth));
+  const [config, setConfig] = useState(adminConfig);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('github_token');
-    if (storedToken) {
-      setToken(storedToken);
-      verifyToken(storedToken);
-    }
+    localStorage.removeItem('github_token');
+    if (!auth) return;
+    return onAuthStateChanged(auth, currentUser => {
+      setUser(currentUser);
+      setToken(currentUser ? sessionStorage.getItem('github_token') : null);
+      if (!currentUser) sessionStorage.removeItem('github_token');
+      setIsLoading(false);
+    }, error => {
+      setError(error.message);
+      setIsLoading(false);
+    });
   }, []);
 
-  const verifyToken = async (accessToken) => {
-    try {
-      const response = await fetch('https://api.github.com/user', {
-        headers: {
-          'Authorization': `token ${accessToken}`,
-          'Accept': 'application/vnd.github.v3+json'
-        }
+  useEffect(() => {
+    let active = true;
+    setConfig(adminConfig);
+    setError('');
+    if (!user || !token) return;
+    const sync = async () => {
+      const saved = await dbUtils.saveUserData(user.uid, {
+        name: user.displayName || '',
+        email: user.email || '',
+        avatar: user.photoURL || ''
       });
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-        setIsAuthenticated(true);
+      if (!active) return;
+      if (!saved.success) setError('Firebase could not save your profile: ' + saved.error);
+      const prefs = await dbUtils.getDashboardPrefs(user.uid);
+      if (!active) return;
+      if (prefs.success && prefs.data) {
+        setConfig({ ...adminConfig, siteTitle: prefs.data.siteTitle || adminConfig.siteTitle,
+          adminEmail: prefs.data.adminEmail || adminConfig.adminEmail });
+      } else if (!prefs.success) {
+        setError('Firebase could not load settings: ' + prefs.error);
       }
-    } catch (error) {
-      localStorage.removeItem('github_token');
+    };
+    sync();
+    return () => { active = false; };
+  }, [user?.uid, token]);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      sessionStorage.removeItem('github_token');
       setToken(null);
       setUser(null);
-      setIsAuthenticated(false);
+    } catch (error) {
+      setError('Sign-out failed: ' + error.message);
     }
-  };
-
-  const handleLogin = (accessToken) => {
-    localStorage.setItem('github_token', accessToken);
-    setToken(accessToken);
-    verifyToken(accessToken);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('github_token');
-    setToken(null);
-    setUser(null);
-    setIsAuthenticated(false);
   };
 
   return (
     <BrowserRouter>
       <div className="app">
-        {isAuthenticated ? (
+        {isLoading ? <div className="spinner" role="status">Loading your session…</div> : user && token ? (
           <>
             <header className="header">
-              <h1>{adminConfig.siteTitle}</h1>
+              <h1>{config.siteTitle}</h1>
               <div className="user-info">
-                {user && (
-                  <img 
-                    src={user.avatar_url} 
-                    alt={user.login} 
-                    style={{ width: '32px', height: '32px', borderRadius: '50%' }}
-                  />
-                )}
-                <span>{user?.login || 'User'}</span>
-                <button className="btn btn-secondary" onClick={handleLogout}>
-                  Logout
-                </button>
+                {user.photoURL && <img src={user.photoURL} alt="" width="32" height="32" style={{ borderRadius: '50%' }} />}
+                <span>{user.displayName || user.email || 'User'}</span>
+                <button className="btn btn-secondary" onClick={handleLogout}>Logout</button>
               </div>
             </header>
-            <nav className="sidebar">
-              <nav>
-                <a href="/" className="active">Dashboard</a>
-                <a href="/repositories">Repositories</a>
-                <a href="/settings">Settings</a>
+            <aside className="sidebar">
+              <nav aria-label="Main navigation">
+                <NavLink to="/" end>Dashboard</NavLink>
+                <NavLink to="/repositories">Repositories</NavLink>
+                <NavLink to="/settings">Settings</NavLink>
               </nav>
-            </nav>
+            </aside>
             <main className="main-content">
+              {error && <p role="alert" className="status-message">{error}</p>}
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/repositories" element={<Repositories />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="*" element={<Navigate to="/" />} />
+                <Route path="/settings" element={<Settings userId={user.uid} config={config} onSave={setConfig} />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </main>
           </>
-        ) : (
-          <Login onLogin={handleLogin} />
-        )}
+        ) : <Login onLogin={(currentUser, accessToken) => { setUser(currentUser); setToken(accessToken); }} />}
       </div>
     </BrowserRouter>
   );
 }
 
 export default App;
+

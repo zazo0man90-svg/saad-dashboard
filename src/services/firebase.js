@@ -1,31 +1,31 @@
 import { initializeApp } from 'firebase/app';
+import { initializeAuth, browserSessionPersistence, browserPopupRedirectResolver, GithubAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { getDatabase, ref, set, get, update, remove, onValue, query, orderByChild, equalTo } from 'firebase/database';
+import firebaseConfig from '../../firebaseConfig';
 
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
+const required = ['apiKey', 'authDomain', 'databaseURL', 'projectId', 'appId'];
+const missing = required.filter(key => !firebaseConfig[key] || firebaseConfig[key].startsWith('YOUR_'));
 
-// Initialize Firebase
 let app = null;
+let auth = null;
 let db = null;
+let firebaseError = missing.length ? 'Firebase setup required: ' + missing.join(', ') + '. See FIREBASE_SETUP.md.' : '';
 
-try {
-  // Check if using default placeholder config
-  if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+if (!firebaseError) {
+  try {
     app = initializeApp(firebaseConfig);
+    auth = initializeAuth(app, { persistence: browserSessionPersistence, popupRedirectResolver: browserPopupRedirectResolver });
     db = getDatabase(app);
-    console.log('Firebase initialized successfully');
-  } else {
-    console.warn('Firebase: Using placeholder config. Update firebase.js with your Firebase credentials.');
+  } catch (error) {
+    firebaseError = 'Firebase could not start: ' + error.message;
   }
-} catch (error) {
-  console.warn('Firebase initialization error:', error.message);
 }
 
-export { app, db, ref, set, get, update, remove, onValue, query, orderByChild, equalTo };
+const githubProvider = new GithubAuthProvider();
+githubProvider.addScope('repo');
+githubProvider.addScope('read:user');
+
+export { app, auth, db, firebaseError, githubProvider, GithubAuthProvider,
+  signInWithPopup, signOut, onAuthStateChanged,
+  ref, set, get, update, remove, onValue, query, orderByChild, equalTo };
+

@@ -212,3 +212,15 @@ body {
   align-items: center;
   height: 200px;
 }
+
+.header { margin-left: 250px; }
+.status-message { margin: 1rem 0; overflow-wrap: anywhere; }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+@media (max-width: 700px) {
+  .sidebar { position: static; width: 100%; height: auto; border-right: 0; }
+  .sidebar nav { display: flex; flex-wrap: wrap; }
+  .header { margin-left: 0; padding: 1rem; flex-wrap: wrap; gap: 1rem; }
+  .main-content { margin-left: 0; padding: 1rem; }
+  .dashboard-grid { grid-template-columns: minmax(0, 1fr); }
+  .login-container { padding: 1rem; }
+}

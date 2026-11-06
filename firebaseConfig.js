@@ -1,19 +1,13 @@
-// Firebase configuration - Replace with your Firebase project credentials
-// Get these from https://console.firebase.google.com/
-
+// Public Firebase web configuration. Never put server credentials here.
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// TODO: Replace with your actual Firebase configuration
-// For now, this will throw an error until you configure it
-if (firebaseConfig.apiKey === "YOUR_API_KEY") {
-  console.warn("Firebase not configured. Please update firebaseConfig.js with your Firebase project credentials.");
-}
-
 export default firebaseConfig;
+

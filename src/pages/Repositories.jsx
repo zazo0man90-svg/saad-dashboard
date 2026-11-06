@@ -1,36 +1,23 @@
 import { useState, useEffect } from 'react';
+import { getRepositories } from '../services/github';
 
 function Repositories() {
   const [repos, setRepos] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchRepos = async () => {
-      const token = localStorage.getItem('github_token');
-      
-      if (token) {
-        try {
-          const response = await fetch('https://api.github.com/user/repos?per_page=100', {
-            headers: {
-              'Authorization': `token ${token}`,
-              'Accept': 'application/vnd.github.v3+json'
-            }
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            setRepos(data);
-          }
-        } catch (error) {
-          console.error('Error fetching repositories:', error);
-        }
-      }
-      
-      setIsLoading(false);
-    };
+  const [error, setError] = useState('');
+  const [attempt, setAttempt] = useState(0);
 
-    fetchRepos();
-  }, []);
+  useEffect(() => {
+    const controller = new AbortController();
+    setIsLoading(true);
+    setError('');
+    getRepositories(controller.signal)
+      .then(data => { if (!controller.signal.aborted) setRepos(data); })
+      .catch(error => { if (!controller.signal.aborted) setError(error.message); })
+      .finally(() => { if (!controller.signal.aborted) setIsLoading(false); });
+    return () => controller.abort();
+  }, [attempt]);
 
   if (isLoading) {
     return (
@@ -44,6 +31,8 @@ function Repositories() {
     <div>
       <h1 style={{ marginBottom: '2rem' }}>Repositories</h1>
       
+      {error && <p role="alert">{error} <button className="btn btn-secondary" onClick={() => setAttempt(attempt + 1)}>Retry</button></p>}
+      {!error && repos.length === 0 && <p>No repositories are available for this GitHub account.</p>}
       <div className="dashboard-grid">
         {repos.map((repo) => (
           <div className="card" key={repo.id}>
@@ -100,3 +89,4 @@ function getLanguageColor(language) {
 }
 
 export default Repositories;
+

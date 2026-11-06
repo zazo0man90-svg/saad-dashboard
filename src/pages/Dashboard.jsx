@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { githubRequest, getRepositories } from '../services/github';
 
 function Dashboard() {
   const [stats, setStats] = useState({
@@ -9,50 +10,32 @@ function Dashboard() {
   });
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      const token = localStorage.getItem('github_token');
-      
-      if (token) {
-        try {
-          const reposResponse = await fetch('https://api.github.com/user/repos?per_page=100', {
-            headers: {
-              'Authorization': `token ${token}`,
-              'Accept': 'application/vnd.github.v3+json'
-            }
-          });
-          
-          if (reposResponse.ok) {
-            const repos = await reposResponse.json();
-            
-            const issuesResponse = await fetch('https://api.github.com/search/issues?q=type:issue+is:open+author:@me', {
-              headers: {
-                'Authorization': `token ${token}`,
-                'Accept': 'application/vnd.github.v3+json'
-              }
-            });
-            
-            if (issuesResponse.ok) {
-              const issuesData = await issuesResponse.json();
-              
-              setStats({
-                totalRepos: repos.length,
-                totalIssues: issuesData.total_count,
-                totalPRs: 0,
-                activeRepos: repos.filter(r => new Date(r.pushed_at) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length
-              });
-            }
-          }
-        } catch (error) {
-          console.error('Error fetching dashboard data:', error);
-        }
-      }
-      
-      setIsLoading(false);
-    };
+  const [error, setError] = useState('');
+  const [attempt, setAttempt] = useState(0);
 
-    fetchDashboardData();
-  }, []);
+  useEffect(() => {
+    const controller = new AbortController();
+    setIsLoading(true);
+    setError('');
+    const load = async () => {
+      const profile = await githubRequest('/user', controller.signal);
+      const [repos, issues, prs] = await Promise.all([
+        getRepositories(controller.signal),
+        githubRequest('/search/issues?q=' + encodeURIComponent(`type:issue is:open author:${profile.login}`), controller.signal),
+        githubRequest('/search/issues?q=' + encodeURIComponent(`type:pr is:open author:${profile.login}`), controller.signal)
+      ]);
+      if (!controller.signal.aborted) setStats({
+        totalRepos: repos.length,
+        totalIssues: issues.total_count,
+        totalPRs: prs.total_count,
+        activeRepos: repos.filter(repo => new Date(repo.pushed_at) > new Date(Date.now() - 30 * 86400000)).length
+      });
+    };
+    load()
+      .catch(error => { if (!controller.signal.aborted) setError(error.message); })
+      .finally(() => { if (!controller.signal.aborted) setIsLoading(false); });
+    return () => controller.abort();
+  }, [attempt]);
 
   if (isLoading) {
     return (
@@ -61,6 +44,9 @@ function Dashboard() {
       </div>
     );
   }
+
+  if (error) return <div><h1>Dashboard</h1><p role="alert">{error}</p>
+    <button className="btn btn-secondary" onClick={() => setAttempt(attempt + 1)}>Retry</button></div>;
 
   return (
     <div>
@@ -104,3 +90,4 @@ function Dashboard() {
 }
 
 export default Dashboard;
+
