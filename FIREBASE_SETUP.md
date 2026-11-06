@@ -62,3 +62,11 @@ firebase deploy --only hosting --project saad-dashboard-446de
 `firebase.json` serves the new `dist` build with an SPA fallback so refreshing `/settings` and `/repositories` works. Other hosts need the same fallback. Rebuild before deployment; legacy checked-in `dist` files are not the source of truth.
 
 No Firebase Console settings, live database rules, or deployments are changed by committing this source code. Live end-to-end verification requires provider configuration, the authorized deployment domain, published rules, and an interactive user sign-in.
+
+## GitHub Pages, offline mode, and the main owner
+
+Hosting now uses GitHub Pages. Add `zazo0man90-svg.github.io` to Authentication → Settings → Authorized domains. Run `npm run pages` and commit generated root files with source. `app.html` is editable; root `index.html` and `assets/` are generated. Hash routes avoid Pages refresh errors.
+
+The owner identity is fixed to `zazo0man90@gmail.com`. Use the first-time admin option to choose your password and create the Firebase account; verify the email before the admin UI unlocks. No password is shipped in this public website. The editable contact email does not change the owner identity, and the admin UI grants no access beyond Firebase security rules.
+
+The sidebar reports database connected/offline/syncing/error status. Project/settings writes commit first to IndexedDB and a persistent per-user outbox. Successful Firebase acknowledgements remove queued operations; permission failures retain them. Reconnection replays pending writes and refreshes the cache. An earlier online sign-in and app visit are required for offline use. Firebase remembers the account in this browser, while GitHub tokens are tab-scoped and matched to the UID. Last synchronized writes win on the same data; project arrays are not collaboratively merged. Don't clear browser storage before pending edits sync.

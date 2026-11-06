@@ -1,60 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-const firebase = vi.hoisted(() => ({
-  auth: { currentUser: { uid: 'alice' } }, db: {},
-  ref: vi.fn((db, path) => path), get: vi.fn(), set: vi.fn(), update: vi.fn()
-}));
-vi.mock('../src/services/firebase.js', () => firebase);
-import { dbUtils } from '../src/services/database';
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  firebase.auth.currentUser = { uid: 'alice' };
-  firebase.get.mockResolvedValue({ exists: () => false });
-  firebase.set.mockResolvedValue();
-  firebase.update.mockResolvedValue();
-});
-
-describe('Firebase user data', () => {
-  it('updates a profile without replacing saved preferences or persisting tokens', async () => {
-    const result = await dbUtils.saveUserData('alice', { name: 'Alice', github_token: 'private-token' });
-    expect(result.success).toBe(true);
-    expect(firebase.set).not.toHaveBeenCalled();
-    expect(firebase.update).toHaveBeenCalledWith('users/alice', {
-      name: 'Alice', email: '', avatar: '', lastLogin: expect.any(String)
-    });
-  });
-  it('returns an empty result for preferences that have not been saved', async () => {
-    expect(await dbUtils.getDashboardPrefs('alice')).toEqual({ success: true, data: null });
-  });
-  it('saves and reads preferences under the Firebase UID', async () => {
-    const prefs = { siteTitle: 'My dashboard', adminEmail: '' };
-    await dbUtils.saveDashboardPrefs('alice', prefs);
-    expect(firebase.set).toHaveBeenCalledWith('users/alice/dashboardPrefs', prefs);
-    firebase.get.mockResolvedValue({ exists: () => true, val: () => prefs });
-    expect(await dbUtils.getDashboardPrefs('alice')).toEqual({ success: true, data: prefs });
-  });
-  it('prevents access under another user ID', async () => {
-    expect((await dbUtils.saveDashboardPrefs('bob', {})).success).toBe(false);
-    expect(firebase.set).not.toHaveBeenCalled();
-  });
-  it('does not access the database after sign-out', async () => {
-    firebase.auth.currentUser = null;
-    expect((await dbUtils.getRepoData(10)).success).toBe(false);
-    expect(firebase.get).not.toHaveBeenCalled();
-  });
-  it('isolates repository records by their owner', async () => {
-    await dbUtils.saveRepoData(10, { name: 'repository' });
-    expect(firebase.set).toHaveBeenCalledWith('users/alice/repositories/10', {
-      name: 'repository', lastSynced: expect.any(String)
-    });
-  });
-  it('returns actual SDK references for the signed-in user only', () => {
-    expect(dbUtils.ref('users/alice/dashboardPrefs')).toBe('users/alice/dashboardPrefs');
-    expect(() => dbUtils.ref('users/bob')).toThrow();
-  });
-  it('surfaces permission failures', async () => {
-    firebase.set.mockRejectedValueOnce(new Error('Permission denied'));
-    expect(await dbUtils.saveDashboardPrefs('alice', {})).toEqual({ success: false, error: 'Permission denied' });
-  });
-});
+import {beforeEach,expect,it,vi} from 'vitest';
+const f=vi.hoisted(()=>({auth:{currentUser:{uid:'alice'}},db:{},ref:vi.fn((db,p)=>p),saveOffline:vi.fn(),readOffline:vi.fn()}));
+vi.mock('../src/services/firebase.js',()=>f);vi.mock('../src/services/sync',()=>f);
+import {dbUtils} from '../src/services/database';
+beforeEach(()=>{vi.clearAllMocks();f.auth.currentUser={uid:'alice'};f.saveOffline.mockResolvedValue({success:true,queued:true});f.readOffline.mockResolvedValue(null);});
+it('queues profile updates without storing credentials or replacing preferences',async()=>{expect((await dbUtils.saveUserData('alice',{name:'Alice',github_token:'secret'})).success).toBe(true);expect(f.saveOffline).toHaveBeenCalledWith('users/alice','update',{name:'Alice',email:'',avatar:'',lastLogin:expect.any(String)});});
+it('reads cached preferences',async()=>{f.readOffline.mockResolvedValue({siteTitle:'A'});expect(await dbUtils.getDashboardPrefs('alice')).toEqual({success:true,data:{siteTitle:'A'}});});
+it('queues preferences under the Firebase UID',async()=>{await dbUtils.saveDashboardPrefs('alice',{siteTitle:'A'});expect(f.saveOffline).toHaveBeenCalledWith('users/alice/dashboardPrefs','set',{siteTitle:'A'});});
+it('rejects another user ID before saving',async()=>{expect((await dbUtils.saveDashboardPrefs('bob',{})).success).toBe(false);expect(f.saveOffline).not.toHaveBeenCalled();});
+it('does not read after sign-out',async()=>{f.auth.currentUser=null;expect((await dbUtils.getWorkspaceData('alice')).success).toBe(false);expect(f.readOffline).not.toHaveBeenCalled();});
+it('isolates repositories by owner',async()=>{await dbUtils.saveRepoData(10,{name:'R'});expect(f.saveOffline).toHaveBeenCalledWith('users/alice/repositories/10','set',{name:'R',lastSynced:expect.any(String)});});
+it('restricts SDK references to the current user',()=>{expect(dbUtils.ref('users/alice')).toBe('users/alice');expect(()=>dbUtils.ref('users/bob')).toThrow();});
+it('reports local storage failures',async()=>{f.saveOffline.mockRejectedValueOnce(new Error('Storage full'));expect(await dbUtils.saveWorkspaceData('alice',{})).toEqual({success:false,error:'Storage full'});});

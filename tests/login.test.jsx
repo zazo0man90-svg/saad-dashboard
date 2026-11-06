@@ -23,7 +23,7 @@ it('submits email sign-in and explicit account creation as separate actions', as
   const onLogin = vi.fn();
   mocks.loginEmail.mockResolvedValue({ user: { uid: 'email-user' }, token: null });
   render(<Login onLogin={onLogin} />);
-  fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'user@example.com' } });
+  fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'user@example.com' } });
   fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password1' } });
   fireEvent.click(screen.getByRole('button', { name: 'Sign in with email' }));
   await waitFor(() => expect(mocks.loginEmail).toHaveBeenCalledWith('user@example.com', 'password1', false));
@@ -37,10 +37,12 @@ it('shows failed email authentication and allows another attempt', async () => {
   const onLogin = vi.fn();
   mocks.loginEmail.mockRejectedValue(new Error('Incorrect email or password'));
   render(<Login onLogin={onLogin} />);
-  fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'user@example.com' } });
+  fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'user@example.com' } });
   fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password' } });
   fireEvent.click(screen.getByRole('button', { name: 'Sign in with email' }));
   await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Incorrect email or password'));
   expect(screen.getByRole('button', { name: 'Sign in with email' }).disabled).toBe(false);
   expect(onLogin).not.toHaveBeenCalled();
 });
+
+it('prefills the admin email but leaves the first password to its owner',()=>{render(<Login onLogin={vi.fn()}/>);fireEvent.click(screen.getByRole('button',{name:/First time\? Set up main admin/}));expect(screen.getByLabelText('Email address').value).toBe('zazo0man90@gmail.com');expect(screen.getByLabelText('Password').value).toBe('');expect(screen.getByRole('button',{name:'Create account'})).toBeTruthy();expect(mocks.loginEmail).not.toHaveBeenCalled();});
