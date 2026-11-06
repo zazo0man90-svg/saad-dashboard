@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { initializeAuth, browserSessionPersistence, browserPopupRedirectResolver, GithubAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { initializeAuth, browserSessionPersistence, browserPopupRedirectResolver, GithubAuthProvider, GoogleAuthProvider, linkWithPopup, reauthenticateWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { getDatabase, ref, set, get, update, remove, onValue, query, orderByChild, equalTo } from 'firebase/database';
 import firebaseConfig from '../../firebaseConfig';
 
@@ -23,11 +23,13 @@ if (!firebaseError) {
   }
 }
 
+const googleProvider = new GoogleAuthProvider();
 const githubProvider = new GithubAuthProvider();
 githubProvider.addScope('repo');
 githubProvider.addScope('read:user');
 
-export { app, auth, db, firebaseError, githubProvider, GithubAuthProvider,
+export { app, auth, db, firebaseError, githubProvider, googleProvider, GithubAuthProvider,
+  linkWithPopup, reauthenticateWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   signInWithPopup, signOut, onAuthStateChanged,
   ref, set, get, update, remove, onValue, query, orderByChild, equalTo };
 

@@ -1,35 +1,46 @@
-# Connect Saad Dashboard to Firebase
+# Saad Dashboard Firebase setup
 
-The app uses Firebase Authentication with GitHub and **Realtime Database** (not Firestore).
+The app uses Firebase Authentication (Google, email/password, and GitHub) and Realtime Database.
 
-## 1. Configure the web app
+## Project configuration
 
-The public web configuration for `saad-dashboard-446de` is already included. In Firebase Console → Project settings → General, select your web app to confirm these values. Copy `.env.example` to `.env.local` and fill in `VITE_FIREBASE_DATABASE_URL`. The other `VITE_FIREBASE_*` values can override the included web configuration when needed. Copy the exact `databaseURL` from Realtime Database; regional URLs differ.
+Public web configuration for `saad-dashboard-446de` is included, including its verified database endpoint:
 
-These values are public browser configuration. Never add a service-account key or GitHub OAuth client secret to this repository or a `VITE_*` variable. Vite embeds environment values during the build, so configure them on your build host too and rebuild after changes.
-
-## 2. Enable GitHub sign-in
-
-1. Firebase Console → Authentication → Sign-in method → GitHub → Enable.
-2. In GitHub Developer settings, create/select an OAuth App. Set its homepage to your dashboard URL and its authorization callback URL to the **exact callback URL shown by Firebase**, usually `https://YOUR_PROJECT.firebaseapp.com/__/auth/handler`.
-3. Put the GitHub client ID and client secret into the **Firebase provider configuration only**, then save.
-4. Authentication → Settings → Authorized domains: add your dashboard hostname and `localhost` for local development. New Firebase projects may not include localhost automatically.
-
-The old GitHub device flow is no longer used. Sign-in opens a Firebase popup, establishes a Firebase session, and returns a GitHub access token for repository requests. The GitHub token is stored only in the current tab's session storage, never in the database. Opening a new tab/session can require signing in again to reconnect GitHub. The `repo` scope allows private-repository access; organization restrictions may require separate GitHub approval.
-
-## 3. Create Realtime Database and apply rules
-
-Create a Realtime Database in locked mode. Publish the contents of `database.rules.json` in its Rules tab. Data is stored under `users/{firebaseAuthUid}/...`; the Firebase UID is different from a GitHub numeric user ID. Each user can read/write only their own subtree. Unmatched database paths remain denied.
-
-Alternatively, after selecting your project in Firebase CLI:
-
-```sh
-firebase deploy --only database --project YOUR_PROJECT_ID
+```
+https://saad-dashboard-446de-default-rtdb.europe-west1.firebasedatabase.app
 ```
 
-Do not deploy these rules over an unrelated existing database without reviewing its current rules and data layout. Legacy records under GitHub IDs or top-level `repositories` are not migrated automatically.
+No environment file is required for this project. To override it for another project, copy `.env.example` to `.env.local` and change the `VITE_FIREBASE_*` values. Vite embeds these values at build time; rebuild after changes. Never put service-account keys or OAuth client secrets in browser configuration.
 
-## 4. Run and verify
+## Sign-in providers
+
+Enable the providers you want under Firebase Console → Authentication → Sign-in method:
+
+- **Google:** enable the provider and select a project support email.
+- **Email/Password:** enable the password option. Existing users can sign in; new users select Create an account. Firebase enforces the configured password policy. The app does not store passwords.
+- **GitHub:** enter your GitHub OAuth App's client ID and secret in Firebase's provider settings only. Set the OAuth App's authorization callback URL to the exact URL Firebase shows, usually `https://saad-dashboard-446de.firebaseapp.com/__/auth/handler`.
+
+Under Authentication → Settings → Authorized domains, add the hostname of your deployment. The checked public Firebase configuration currently includes localhost, `saad-dashboard-446de.firebaseapp.com`, and `saad-dashboard-446de.web.app`.
+
+Google/email users can enter the dashboard and save settings immediately. Select **Connect GitHub** in the header to authorize repository access. This links GitHub to the current Firebase account, preserving its UID and saved data. If GitHub is already linked, reconnecting reauthenticates that account. If the GitHub credential belongs to a different existing Firebase account, the app explains the conflict rather than merging users automatically.
+
+GitHub sign-in is also available directly from the login page. The GitHub `repo` scope includes private repositories; organization policies may require additional approval. Firebase auth and GitHub tokens are scoped to the browser tab session. GitHub access tokens are never written to the database. A new browser session may require reconnecting GitHub.
+
+## Apply the database rules
+
+In Realtime Database → Rules, review and publish the contents of `database.rules.json`. The live endpoint responded to an anonymous read during setup, so the supplied user-specific rules still need to be applied and verified before storing personal data.
+
+Data is stored under `users/{firebaseAuthUid}/...`. These rules allow only that authenticated UID to read/write its subtree; all other paths are denied. A Firebase UID differs from a GitHub numeric user ID. Profile updates preserve saved settings. Legacy top-level repository records or records under GitHub IDs are not automatically migrated.
+
+Alternatively, with Firebase CLI authenticated to this project:
+
+```sh
+firebase deploy --only database --project saad-dashboard-446de
+```
+
+Review any existing database and rules before replacing them.
+
+## Run and verify
 
 ```sh
 npm ci
@@ -37,15 +48,17 @@ npm test
 npm run dev
 ```
 
-Sign in with GitHub. Your name should appear and a profile should be created at `users/{uid}`. Open Settings, change the title, save, and reload: the saved title should return from Firebase. Confirm a second account cannot read the first account's data. A database permission or connection failure is shown in the dashboard instead of being silently ignored.
+Test Google sign-in, email account creation, and email sign-in with your own test accounts. Verify your profile appears under `users/{uid}`. Change the title in Settings, save, and reload to verify persistence. Connect GitHub, confirm repositories load, and verify settings remain on the same Firebase UID. Confirm a second account cannot read the first account's data after publishing rules.
 
-## 5. Build and host
+Automated tests cover provider selection, email sign-in vs. registration, GitHub linking/reconnection, failed sign-in recovery, authenticated access without GitHub, database scoping, settings, and GitHub requests. They mock external services; they do not establish live OAuth or database write success.
+
+## Build and deploy
 
 ```sh
 npm run build
-firebase deploy --only hosting --project YOUR_PROJECT_ID
+firebase deploy --only hosting --project saad-dashboard-446de
 ```
 
-`firebase.json` serves `dist` and rewrites application routes to `index.html`, so refreshing `/settings` or `/repositories` works. For another hosting service configure the same SPA fallback. Always build with your Firebase environment values before deploying; the checked-in legacy `dist` is not the source of truth.
+`firebase.json` serves the new `dist` build with an SPA fallback so refreshing `/settings` and `/repositories` works. Other hosts need the same fallback. Rebuild before deployment; legacy checked-in `dist` files are not the source of truth.
 
-If login fails, the page gives setup, provider, authorized-domain, popup, or network guidance. Full live verification requires a real Firebase project, enabled GitHub provider, published database rules, and an authorized website domain.
+No Firebase Console settings, live database rules, or deployments are changed by committing this source code. Live end-to-end verification requires provider configuration, the authorized deployment domain, published rules, and an interactive user sign-in.

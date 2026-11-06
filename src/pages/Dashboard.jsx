@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { githubRequest, getRepositories } from '../services/github';
 
-function Dashboard() {
+function Dashboard({ token }) {
   const [stats, setStats] = useState({
     totalRepos: 0,
     totalIssues: 0,
@@ -14,6 +14,7 @@ function Dashboard() {
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
+    if (!token) { setIsLoading(false); return; }
     const controller = new AbortController();
     setIsLoading(true);
     setError('');
@@ -35,7 +36,12 @@ function Dashboard() {
       .catch(error => { if (!controller.signal.aborted) setError(error.message); })
       .finally(() => { if (!controller.signal.aborted) setIsLoading(false); });
     return () => controller.abort();
-  }, [attempt]);
+  }, [attempt, token]);
+
+  if (!token) return <div><h1>Dashboard</h1><div className="card" style={{ marginTop: '1rem' }}>
+    <h2>Connect your GitHub account</h2>
+    <p>Use Connect GitHub above to load your repositories and activity. Your Firebase account and saved settings are ready to use.</p>
+  </div></div>;
 
   if (isLoading) {
     return (

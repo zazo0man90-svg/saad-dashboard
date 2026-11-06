@@ -224,3 +224,9 @@ body {
   .dashboard-grid { grid-template-columns: minmax(0, 1fr); }
   .login-container { padding: 1rem; }
 }
+.login-box { width: 100%; }
+.login-providers { display: grid; gap: 0.75rem; margin: 1.5rem 0; }
+.login-box .form-group { text-align: left; }
+.login-box form .btn { width: 100%; }
+.account-toggle { margin-top: 1rem; }
+.header .user-info { flex-wrap: wrap; }

@@ -1,36 +1,25 @@
 import { useState } from 'react';
 import { adminConfig } from '../config';
-import { auth, firebaseError, githubProvider, GithubAuthProvider, signInWithPopup, signOut } from '../services/firebase';
-
-const messages = {
-  'auth/configuration-not-found': 'Firebase Authentication is not configured for this project. Open Authentication in Firebase Console, get started, and enable GitHub.',
-  'auth/invalid-api-key': 'The Firebase API key is invalid. Check the web app configuration in Firebase Project settings.',
-  'auth/popup-blocked': 'Allow popups for this site, then try again.',
-  'auth/popup-closed-by-user': 'Sign-in was closed. Try again when ready.',
-  'auth/unauthorized-domain': 'Add this website domain to Firebase Authentication → Settings → Authorized domains.',
-  'auth/operation-not-allowed': 'Enable GitHub in Firebase Authentication → Sign-in method.',
-  'auth/account-exists-with-different-credential': 'This email already uses another sign-in provider. Sign in with that provider first.',
-  'auth/network-request-failed': 'Could not reach Firebase. Check your connection and try again.'
-};
+import { auth, firebaseError } from '../services/firebase';
+import { connectGithub, loginGoogle, loginEmail, authErrorMessage } from '../services/auth';
 
 function Login({ onLogin }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [createAccount, setCreateAccount] = useState(false);
+  const disabled = isLoading || !auth;
 
-  const handleGithubLogin = async () => {
+  const submit = async operation => {
     setIsLoading(true);
     setError('');
     try {
-      const result = await signInWithPopup(auth, githubProvider);
-      const token = GithubAuthProvider.credentialFromResult(result)?.accessToken;
-      if (!token) throw new Error('GitHub did not return an access token. Please try again.');
-      // Keep the GitHub token out of Firebase and persistent local storage.
-      sessionStorage.setItem('github_token', token);
-      onLogin(result.user, token);
+      const result = await operation();
+      setPassword('');
+      onLogin(result.user, result.token);
     } catch (error) {
-      sessionStorage.removeItem('github_token');
-      if (auth?.currentUser) await signOut(auth).catch(() => {});
-      setError(messages[error.code] || error.message || 'Sign-in failed. Please try again.');
+      setError(authErrorMessage(error));
     } finally {
       setIsLoading(false);
     }
@@ -40,18 +29,34 @@ function Login({ onLogin }) {
     <div className="login-container">
       <div className="login-box">
         <h2>{adminConfig.siteTitle}</h2>
-        <p style={{ color: '#8b949e', marginBottom: '1.5rem' }}>
-          Sign in with GitHub to connect your repositories and Firebase dashboard.
-        </p>
+        <p>Sign in to your dashboard</p>
         {(firebaseError || error) && <p role="alert" className="status-message">{firebaseError || error}</p>}
-        <button className="btn btn-primary" onClick={handleGithubLogin}
-          disabled={isLoading || !auth} style={{ width: '100%', padding: '0.75rem' }}>
-          {isLoading ? 'Signing in…' : 'Sign in with GitHub'}
-        </button>
+        <div className="login-providers">
+          <button className="btn btn-secondary" onClick={() => submit(loginGoogle)} disabled={disabled}>Sign in with Google</button>
+          <button className="btn btn-secondary" onClick={() => submit(connectGithub)} disabled={disabled}>Sign in with GitHub</button>
+        </div>
+        <form onSubmit={event => { event.preventDefault(); submit(() => loginEmail(email, password, createAccount)); }}>
+          <div className="form-group">
+            <label htmlFor="email">Email</label>
+            <input id="email" type="email" autoComplete="email" required value={email}
+              disabled={disabled} onChange={event => setEmail(event.target.value)} />
+          </div>
+          <div className="form-group">
+            <label htmlFor="password">Password</label>
+            <input id="password" type="password" autoComplete={createAccount ? 'new-password' : 'current-password'}
+              required minLength={createAccount ? 6 : undefined} value={password}
+              disabled={disabled} onChange={event => setPassword(event.target.value)} />
+          </div>
+          <button className="btn btn-primary" disabled={disabled} type="submit">
+            {isLoading ? 'Please wait…' : createAccount ? 'Create account' : 'Sign in with email'}
+          </button>
+        </form>
+        <button className="btn btn-secondary account-toggle" disabled={disabled} onClick={() => {
+          setCreateAccount(!createAccount); setError(''); setPassword('');
+        }}>{createAccount ? 'Already have an account? Sign in' : 'New here? Create an account'}</button>
       </div>
     </div>
   );
 }
 
 export default Login;
-
