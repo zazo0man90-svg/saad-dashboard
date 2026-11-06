@@ -36,3 +36,10 @@ npm run pages
 Edit `src/`, `app.html`, `public/`, and `firebaseConfig.js`. Root `index.html`, `assets/`, `sw.js`, `favicon.svg`, and `.nojekyll` are generated hosting files. Run `npm run pages` and commit them with the source to main. The existing Pages setup serves the repository root. Production uses hash routes, so Pages needs no server rewrites. A new offline app version is offered through Update & reload.
 
 The UI includes Overview, Projects, Repositories, Activity, Analytics, Team, Integrations, Settings, and owner Administration. Team is currently a personal workspace. Tests mock external services; live OAuth and authenticated database writes need an interactive account check.
+
+
+## Hotel skills library
+
+The Skills menu catalogs all 10 workflows from [HospitalityOS hotel-ai-skills](https://github.com/hospitalityos/hotel-ai-skills). Search by task, filter by category, and star favorites. **Create brief** turns a property name, objective, and available context into an editable project with a prepared brief and a pinned link to the original skill guide. Open that project and expand **Hotel skill brief** to edit or copy it.
+
+This is a workflow library, not an installed Claude plugin or a connected AI execution service. Original instructions remain on the upstream repository; their proprietary content is not bundled or republished here. Favorites and project briefs use the existing per-user offline cache and Firebase outbox; demo changes stay local.
