@@ -1,62 +1,11 @@
-import { useState } from 'react';
-import { adminConfig } from '../config';
-import { auth, firebaseError } from '../services/firebase';
-import { connectGithub, loginGoogle, loginEmail, authErrorMessage } from '../services/auth';
-
-function Login({ onLogin }) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [createAccount, setCreateAccount] = useState(false);
-  const disabled = isLoading || !auth;
-
-  const submit = async operation => {
-    setIsLoading(true);
-    setError('');
-    try {
-      const result = await operation();
-      setPassword('');
-      onLogin(result.user, result.token);
-    } catch (error) {
-      setError(authErrorMessage(error));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="login-container">
-      <div className="login-box">
-        <h2>{adminConfig.siteTitle}</h2>
-        <p>Sign in to your dashboard</p>
-        {(firebaseError || error) && <p role="alert" className="status-message">{firebaseError || error}</p>}
-        <div className="login-providers">
-          <button className="btn btn-secondary" onClick={() => submit(loginGoogle)} disabled={disabled}>Sign in with Google</button>
-          <button className="btn btn-secondary" onClick={() => submit(connectGithub)} disabled={disabled}>Sign in with GitHub</button>
-        </div>
-        <form onSubmit={event => { event.preventDefault(); submit(() => loginEmail(email, password, createAccount)); }}>
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input id="email" type="email" autoComplete="email" required value={email}
-              disabled={disabled} onChange={event => setEmail(event.target.value)} />
-          </div>
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input id="password" type="password" autoComplete={createAccount ? 'new-password' : 'current-password'}
-              required minLength={createAccount ? 6 : undefined} value={password}
-              disabled={disabled} onChange={event => setPassword(event.target.value)} />
-          </div>
-          <button className="btn btn-primary" disabled={disabled} type="submit">
-            {isLoading ? 'Please wait…' : createAccount ? 'Create account' : 'Sign in with email'}
-          </button>
-        </form>
-        <button className="btn btn-secondary account-toggle" disabled={disabled} onClick={() => {
-          setCreateAccount(!createAccount); setError(''); setPassword('');
-        }}>{createAccount ? 'Already have an account? Sign in' : 'New here? Create an account'}</button>
-      </div>
-    </div>
-  );
+import {useState} from 'react';
+import {auth,firebaseError} from '../services/firebase';
+import {connectGithub,loginGoogle,loginEmail,authErrorMessage} from '../services/auth';
+import Icon,{Logo} from '../components/Icon';
+import {adminConfig} from '../config';
+export default function Login({onLogin,onPreview}){
+ const[busy,setBusy]=useState(false),[error,setError]=useState(''),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[create,setCreate]=useState(false);
+ const submit=async operation=>{setBusy(true);setError('');try{const r=await operation();setPassword('');onLogin(r.user,r.token);}catch(e){setError(authErrorMessage(e));}finally{setBusy(false);}};
+ const disabled=busy||!auth;
+ return <div className="auth-page"><section className="auth-story"><Logo/><div className="story-content"><div className="story-pill"><i/> A little more focus. A lot more possibility.</div><h1>Your ideas.<br/>Your projects.<br/><em>One happy place.</em></h1><p>A calmer space to organize your work,<br/>connect your tools, and make things happen.</p><div className="mini-dashboard" aria-hidden="true"><aside><b>s.</b><Icon/><Icon name="folder"/><Icon name="chart"/></aside><div><small>My workspace <b>S</b></small><h4>Make room for your next big idea.</h4><section><span>Projects<strong>12 <i>↗ 20%</i></strong></span><span>Completed<strong>8 <i>↗ 14%</i></strong></span></section><small>Project activity</small><div className="mini-chart">{[30,52,40,80,61,93,72,100,65,87,74,95].map((h,i)=><i key={i} style={{height:h+'%'}}/>)}</div><footer><Icon name="check" size={12}/>Something great, in progress.<span>On track</span></footer></div><span className="floating-spark">✦</span></div><div className="story-proof"><Icon name="check" size={14}/>Less switching tabs. More moving forward.</div></div><footer>Made for the way you work.<span>✦</span></footer></section><section className="auth-form-side"><div className="auth-top-note">Your next chapter starts here <Icon name="out" size={14}/></div><div className="auth-form-wrap"><span className="welcome-icon">✦</span><h2>{create?'Start something great.':'Welcome back.'}</h2><p>{create?'Your workspace is waiting for you.':'Good to see you. Let’s pick up where you left off.'}</p><div className="login-providers"><button className="button provider" disabled={disabled} onClick={()=>submit(loginGoogle)}><b className="google-g">G</b>Sign in with Google</button><button className="button provider" disabled={disabled} onClick={()=>submit(connectGithub)}><Icon name="code"/>Sign in with GitHub</button></div><div className="divider"><span>or continue with email</span></div>{(firebaseError||error)&&<p className="error-message" role="alert">{firebaseError||error}</p>}<form onSubmit={e=>{e.preventDefault();submit(()=>loginEmail(email,password,create));}}><label htmlFor="email">Email address</label><input id="email" type="email" required autoComplete="email" value={email} disabled={disabled} placeholder="you@example.com" onChange={e=>setEmail(e.target.value)}/><label htmlFor="password">Password</label><input id="password" type="password" required minLength={create?6:undefined} autoComplete={create?'new-password':'current-password'} value={password} disabled={disabled} placeholder={create?'Create your password':'Enter your password'} onChange={e=>setPassword(e.target.value)}/><button className="button primary auth-submit" disabled={disabled}>{busy?'Please wait…':create?'Create account':'Sign in with email'}<Icon name="arrow" size={16}/></button></form><p className="account-prompt">{create?'Already have an account?':'New around here?'} <button aria-label={create?'Already have an account? Sign in':'New here? Create an account'} onClick={()=>{setCreate(!create);setPassword('');setError('');}} disabled={disabled}>{create?'Sign in':'Create an account'}</button></p><button className="admin-setup-link" onClick={()=>{setCreate(true);setEmail(adminConfig.ownerEmail);setPassword('');setError('');}}>First time? Set up main admin <Icon name="arrow" size={12}/></button>{onPreview&&<button className="preview-link" onClick={onPreview}>Just looking? Explore the demo workspace <Icon name="out" size={13}/></button>}</div><footer className="auth-footer"><span><Icon name="shield" size={13}/>Secure sign-in with Firebase</span><span>© 2026 Saad Workspace</span></footer></section></div>;
 }
-
-export default Login;

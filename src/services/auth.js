@@ -13,18 +13,21 @@ export async function connectGithub() {
   const token = GithubAuthProvider.credentialFromResult(result)?.accessToken;
   if (!token) throw new Error('GitHub did not return an access token. Please connect GitHub again.');
   sessionStorage.setItem('github_token', token);
+  sessionStorage.setItem('github_token_uid', result.user.uid);
   return { user: result.user, token };
 }
 
 export async function loginGoogle() {
   const result = await signInWithPopup(auth, googleProvider);
   sessionStorage.removeItem('github_token');
+  sessionStorage.removeItem('github_token_uid');
   return { user: result.user, token: null };
 }
 
 export async function loginEmail(email, password, createAccount = false) {
   const result = await (createAccount ? createUserWithEmailAndPassword : signInWithEmailAndPassword)(auth, email.trim(), password);
   sessionStorage.removeItem('github_token');
+  sessionStorage.removeItem('github_token_uid');
   return { user: result.user, token: null };
 }
 

@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { initializeAuth, browserSessionPersistence, browserPopupRedirectResolver, GithubAuthProvider, GoogleAuthProvider, linkWithPopup, reauthenticateWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { initializeAuth, browserLocalPersistence, browserPopupRedirectResolver, GithubAuthProvider, GoogleAuthProvider, sendEmailVerification, linkWithPopup, reauthenticateWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { getDatabase, ref, set, get, update, remove, onValue, query, orderByChild, equalTo } from 'firebase/database';
 import firebaseConfig from '../../firebaseConfig';
 
@@ -14,7 +14,7 @@ let firebaseError = missing.length ? 'Firebase setup required: ' + missing.join(
 if (!firebaseError) {
   try {
     app = initializeApp(firebaseConfig);
-    auth = initializeAuth(app, { persistence: browserSessionPersistence, popupRedirectResolver: browserPopupRedirectResolver });
+    auth = initializeAuth(app, { persistence: browserLocalPersistence, popupRedirectResolver: browserPopupRedirectResolver });
     db = getDatabase(app);
   } catch (error) {
     auth = null;
@@ -29,7 +29,7 @@ githubProvider.addScope('repo');
 githubProvider.addScope('read:user');
 
 export { app, auth, db, firebaseError, githubProvider, googleProvider, GithubAuthProvider,
-  linkWithPopup, reauthenticateWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  sendEmailVerification, linkWithPopup, reauthenticateWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   signInWithPopup, signOut, onAuthStateChanged,
   ref, set, get, update, remove, onValue, query, orderByChild, equalTo };
 
