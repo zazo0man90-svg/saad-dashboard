@@ -1,0 +1,13 @@
+import {beforeEach,expect,it,vi} from 'vitest';
+const f=vi.hoisted(()=>({auth:{currentUser:{uid:'alice'}},db:{},ref:vi.fn((db,p)=>p),saveOffline:vi.fn(),readOffline:vi.fn()}));
+vi.mock('../src/services/firebase.js',()=>f);vi.mock('../src/services/sync',()=>f);
+import {dbUtils} from '../src/services/database';
+beforeEach(()=>{vi.clearAllMocks();f.auth.currentUser={uid:'alice'};f.saveOffline.mockResolvedValue({success:true,queued:true});f.readOffline.mockResolvedValue(null);});
+it('queues profile updates without storing credentials or replacing preferences',async()=>{expect((await dbUtils.saveUserData('alice',{name:'Alice',github_token:'secret'})).success).toBe(true);expect(f.saveOffline).toHaveBeenCalledWith('users/alice','update',{name:'Alice',email:'',avatar:'',lastLogin:expect.any(String)});});
+it('reads cached preferences',async()=>{f.readOffline.mockResolvedValue({siteTitle:'A'});expect(await dbUtils.getDashboardPrefs('alice')).toEqual({success:true,data:{siteTitle:'A'}});});
+it('queues preferences under the Firebase UID',async()=>{await dbUtils.saveDashboardPrefs('alice',{siteTitle:'A'});expect(f.saveOffline).toHaveBeenCalledWith('users/alice/dashboardPrefs','set',{siteTitle:'A'});});
+it('rejects another user ID before saving',async()=>{expect((await dbUtils.saveDashboardPrefs('bob',{})).success).toBe(false);expect(f.saveOffline).not.toHaveBeenCalled();});
+it('does not read after sign-out',async()=>{f.auth.currentUser=null;expect((await dbUtils.getWorkspaceData('alice')).success).toBe(false);expect(f.readOffline).not.toHaveBeenCalled();});
+it('isolates repositories by owner',async()=>{await dbUtils.saveRepoData(10,{name:'R'});expect(f.saveOffline).toHaveBeenCalledWith('users/alice/repositories/10','set',{name:'R',lastSynced:expect.any(String)});});
+it('restricts SDK references to the current user',()=>{expect(dbUtils.ref('users/alice')).toBe('users/alice');expect(()=>dbUtils.ref('users/bob')).toThrow();});
+it('reports local storage failures',async()=>{f.saveOffline.mockRejectedValueOnce(new Error('Storage full'));expect(await dbUtils.saveWorkspaceData('alice',{})).toEqual({success:false,error:'Storage full'});});

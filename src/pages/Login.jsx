@@ -1,105 +1,11 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { adminConfig } from '../config';
-
-function Login({ onLogin }) {
-  const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleGithubLogin = async () => {
-    setIsLoading(true);
-    
-    try {
-      const response = await fetch('https://github.com/login/device/code', {
-        method: 'POST',
-        headers: { 'Accept': 'application/json' },
-        body: JSON.stringify({
-          client_id: adminConfig.github.clientId,
-          scope: 'repo read:user user:email'
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.device_code) {
-        window.open(data.verification_uri, '_blank');
-        alert(`Open ${data.verification_uri} and enter this code: ${data.user_code}`);
-        pollForToken(data.device_code, data.interval);
-      }
-    } catch (error) {
-      console.error('Login failed:', error);
-      setIsLoading(false);
-    }
-  };
-
-  const pollForToken = async (deviceCode, interval) => {
-    const maxAttempts = 60;
-    let attempts = 0;
-
-    const checkToken = async () => {
-      attempts++;
-      
-      try {
-        const response = await fetch('https://github.com/login/oauth/access_token', {
-          method: 'POST',
-          headers: { 'Accept': 'application/json' },
-          body: JSON.stringify({
-            client_id: adminConfig.github.clientId,
-            device_code: deviceCode,
-            grant_type: 'urn:ietf:params:oauth:grant-type:device_code'
-          })
-        });
-
-        const data = await response.json();
-
-        if (data.access_token) {
-          onLogin(data.access_token);
-          navigate('/');
-        } else if (data.error === 'authorization_pending') {
-          if (attempts < maxAttempts) {
-            setTimeout(checkToken, interval * 1000);
-          } else {
-            alert('Login timeout. Please try again.');
-            setIsLoading(false);
-          }
-        } else {
-          alert(`Login failed: ${data.error_description}`);
-          setIsLoading(false);
-        }
-      } catch (error) {
-        if (attempts < maxAttempts) {
-          setTimeout(checkToken, interval * 1000);
-        } else {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    checkToken();
-  };
-
-  return (
-    <div className="login-container">
-      <div className="login-box">
-        <h2>{adminConfig.siteTitle}</h2>
-        <p style={{ color: '#8b949e', marginBottom: '1.5rem' }}>
-          Sign in with GitHub to access your dashboard
-        </p>
-        <button 
-          className="btn btn-primary" 
-          onClick={handleGithubLogin}
-          disabled={isLoading}
-          style={{ width: '100%', padding: '0.75rem' }}
-        >
-          {isLoading ? (
-            <div className="loading" style={{ width: '20px', height: '20px', borderWidth: '3px' }}></div>
-          ) : (
-            'Sign in with GitHub'
-          )}
-        </button>
-      </div>
-    </div>
-  );
+import {useState} from 'react';
+import {auth,firebaseError} from '../services/firebase';
+import {connectGithub,loginGoogle,loginEmail,authErrorMessage} from '../services/auth';
+import Icon,{Logo} from '../components/Icon';
+import {adminConfig} from '../config';
+export default function Login({onLogin,onPreview}){
+ const[busy,setBusy]=useState(false),[error,setError]=useState(''),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[create,setCreate]=useState(false);
+ const submit=async operation=>{setBusy(true);setError('');try{const r=await operation();setPassword('');onLogin(r.user,r.token);}catch(e){setError(authErrorMessage(e));}finally{setBusy(false);}};
+ const disabled=busy||!auth;
+ return <div className="auth-page"><section className="auth-story"><Logo/><div className="story-content"><div className="story-pill"><i/> A little more focus. A lot more possibility.</div><h1>Your ideas.<br/>Your projects.<br/><em>One happy place.</em></h1><p>A calmer space to organize your work,<br/>connect your tools, and make things happen.</p><div className="mini-dashboard" aria-hidden="true"><aside><b>s.</b><Icon/><Icon name="folder"/><Icon name="chart"/></aside><div><small>My workspace <b>S</b></small><h4>Make room for your next big idea.</h4><section><span>Projects<strong>12 <i>↗ 20%</i></strong></span><span>Completed<strong>8 <i>↗ 14%</i></strong></span></section><small>Project activity</small><div className="mini-chart">{[30,52,40,80,61,93,72,100,65,87,74,95].map((h,i)=><i key={i} style={{height:h+'%'}}/>)}</div><footer><Icon name="check" size={12}/>Something great, in progress.<span>On track</span></footer></div><span className="floating-spark">✦</span></div><div className="story-proof"><Icon name="check" size={14}/>Less switching tabs. More moving forward.</div></div><footer>Made for the way you work.<span>✦</span></footer></section><section className="auth-form-side"><div className="auth-top-note">Your next chapter starts here <Icon name="out" size={14}/></div><div className="auth-form-wrap"><span className="welcome-icon">✦</span><h2>{create?'Start something great.':'Welcome back.'}</h2><p>{create?'Your workspace is waiting for you.':'Good to see you. Let’s pick up where you left off.'}</p><div className="login-providers"><button className="button provider" disabled={disabled} onClick={()=>submit(loginGoogle)}><b className="google-g" aria-hidden="true">G</b>Sign in with Google</button><button className="button provider" disabled={disabled} onClick={()=>submit(connectGithub)}><Icon name="code"/>Sign in with GitHub</button></div><div className="divider"><span>or continue with email</span></div>{(firebaseError||error)&&<p className="error-message" role="alert">{firebaseError||error}</p>}<form onSubmit={e=>{e.preventDefault();submit(()=>loginEmail(email,password,create));}}><label htmlFor="email">Email address</label><input id="email" type="email" required autoComplete="email" value={email} disabled={disabled} placeholder="you@example.com" onChange={e=>setEmail(e.target.value)}/><label htmlFor="password">Password</label><input id="password" type="password" required minLength={create?6:undefined} autoComplete={create?'new-password':'current-password'} value={password} disabled={disabled} placeholder={create?'Create your password':'Enter your password'} onChange={e=>setPassword(e.target.value)}/><button className="button primary auth-submit" disabled={disabled}>{busy?'Please wait…':create?'Create account':'Sign in with email'}<Icon name="arrow" size={16}/></button></form><p className="account-prompt">{create?'Already have an account?':'New around here?'} <button aria-label={create?'Already have an account? Sign in':'New here? Create an account'} onClick={()=>{setCreate(!create);setPassword('');setError('');}} disabled={disabled}>{create?'Sign in':'Create an account'}</button></p><button className="admin-setup-link" onClick={()=>{setCreate(true);setEmail(adminConfig.ownerEmail);setPassword('');setError('');}}>First time? Set up main admin <Icon name="arrow" size={12}/></button>{onPreview&&<button className="preview-link" onClick={onPreview}>Just looking? Explore the demo workspace <Icon name="out" size={13}/></button>}</div><footer className="auth-footer"><span><Icon name="shield" size={13}/>Secure sign-in with Firebase</span><span>© 2026 Saad Workspace</span></footer></section></div>;
 }
-
-export default Login;

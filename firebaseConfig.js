@@ -1,19 +1,13 @@
-// Firebase configuration - Replace with your Firebase project credentials
-// Get these from https://console.firebase.google.com/
-
+// Public Firebase web configuration. Never put server credentials here.
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyBfnRhlLQQEoshEIw8CKkFx4GV0dxnd-OI',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'saad-dashboard-446de.firebaseapp.com',
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || 'https://saad-dashboard-446de-default-rtdb.europe-west1.firebasedatabase.app',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'saad-dashboard-446de',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'saad-dashboard-446de.firebasestorage.app',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '832450784066',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:832450784066:web:42c76dbe96f9c08f8636db'
 };
 
-// TODO: Replace with your actual Firebase configuration
-// For now, this will throw an error until you configure it
-if (firebaseConfig.apiKey === "YOUR_API_KEY") {
-  console.warn("Firebase not configured. Please update firebaseConfig.js with your Firebase project credentials.");
-}
-
 export default firebaseConfig;
+

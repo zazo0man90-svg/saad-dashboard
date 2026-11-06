@@ -1,0 +1,7 @@
+import {build} from 'vite';
+import {readdir,readFile,writeFile,rename} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+await build();await rename('dist/app.html','dist/index.html');
+const assets=(await readdir('dist/assets')).map(n=>'./assets/'+n),hash=createHash('sha256');for(const f of assets)hash.update(await readFile('dist/'+f));hash.update(await readFile('dist/index.html'));
+const files=['./','./index.html','./favicon.svg',...assets];
+await writeFile('dist/sw.js',`const CACHE='saad-workspace-${hash.digest('hex').slice(0,12)}',FILES=${JSON.stringify(files)};self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES))));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('saad-workspace-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('message',e=>{if(e.data==='SKIP_WAITING')self.skipWaiting();});self.addEventListener('fetch',e=>{const u=new URL(e.request.url),scope=new URL(self.registration.scope);if(e.request.method!=='GET'||u.origin!==self.location.origin||!u.pathname.startsWith(scope.pathname))return;if(e.request.mode==='navigate'){e.respondWith(fetch(e.request).catch(()=>caches.open(CACHE).then(c=>c.match(new URL('index.html',scope).href))));return;}if(FILES.some(f=>new URL(f,scope).href===u.href))e.respondWith(caches.open(CACHE).then(c=>c.match(e.request)).then(cached=>cached||fetch(e.request)));});`);await writeFile('dist/.nojekyll','');console.log('Offline app shell prepared.');
